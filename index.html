@@ -1,0 +1,1781 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Test WebScene 3D | Daloa</title>
+
+    <link rel="stylesheet" href="https://js.arcgis.com/4.32/esri/themes/light/main.css">
+    <script src="https://js.arcgis.com/4.32/"></script>
+
+    <style>
+        html,
+        body,
+        #viewDiv {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        #status {
+            position: fixed;
+            top: 14px;
+            left: 50%;
+            z-index: 10;
+            transform: translateX(-50%);
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.94);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+            color: #26313d;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            pointer-events: none;
+        }
+
+        #layersPanel {
+            position: fixed;
+            top: 62px;
+            right: 14px;
+            z-index: 10;
+            width: 260px;
+            max-height: calc(100vh - 90px);
+            overflow-y: auto;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.96);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.24);
+            color: #26313d;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 13px;
+            transition: transform 220ms ease, opacity 220ms ease;
+        }
+
+        #layersPanel.is-closed {
+            transform: translateX(calc(100% + 18px));
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #openMainPanel {
+            position: fixed;
+            top: 70px;
+            right: 0;
+            z-index: 11;
+            display: none;
+            padding: 10px 8px;
+            border: 1px solid #ccd3d8;
+            border-right: 0;
+            border-radius: 6px 0 0 6px;
+            background: rgba(255, 255, 255, 0.96);
+            color: #26313d;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            cursor: pointer;
+        }
+
+        #openMainPanel.is-visible {
+            display: block;
+        }
+
+        #toolsDock {
+            position: fixed;
+            top: 14px;
+            left: 58px;
+            z-index: 10;
+            width: 230px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.96);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.24);
+            color: #26313d;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 13px;
+        }
+
+        #statsDock {
+            position: fixed;
+            left: 14px;
+            bottom: 24px;
+            z-index: 10;
+            width: 360px;
+            max-height: 46vh;
+            overflow-y: auto;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.24);
+            color: #26313d;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 13px;
+        }
+
+        #hoverTooltip {
+            position: fixed;
+            z-index: 30;
+            display: none;
+            max-width: 260px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            background: rgba(38, 49, 61, 0.94);
+            color: #fff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        .tooltip-title {
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+
+        .tooltip-row {
+            margin: 2px 0;
+        }
+
+        #layersPanelHeader {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px;
+            border-bottom: 1px solid #e1e5e8;
+            font-weight: 700;
+        }
+
+        #closeMainPanel {
+            border: 1px solid #ccd3d8;
+            border-radius: 4px;
+            background: #f7f9fb;
+            color: #26313d;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .panel-toggle {
+            border: 1px solid #ccd3d8;
+            border-radius: 4px;
+            background: #f7f9fb;
+            color: #26313d;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        #openEtalesCluster {
+            width: calc(100% - 24px);
+            margin: 8px 12px 0;
+            padding: 7px 10px;
+            border: 1px solid #c78a3a;
+            border-radius: 4px;
+            background: #fff8ed;
+            color: #80551f;
+            font: inherit;
+            cursor: pointer;
+        }
+
+        #openEtalesCluster:hover {
+            background: #f6ead8;
+        }
+
+        #basemapList {
+            border-bottom: 1px solid #e4e7ea;
+        }
+
+        .panel-group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px 6px;
+            color: #4b5560;
+            font-weight: 700;
+        }
+
+        .panel-group-body {
+            padding: 4px 12px 10px;
+        }
+
+        .panel-subtitle {
+            margin-bottom: 6px;
+            color: #4b5560;
+            font-weight: 700;
+        }
+
+        .basemap-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 0;
+        }
+
+        .basemap-control label {
+            cursor: pointer;
+        }
+
+        .query-control {
+            margin-bottom: 8px;
+        }
+
+        .query-control label {
+            display: block;
+            margin-bottom: 3px;
+            color: #4b5560;
+            font-weight: 700;
+        }
+
+        .query-control select,
+        .query-control input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 6px 8px;
+            border: 1px solid #c9d0d6;
+            border-radius: 4px;
+            background: #fff;
+            color: #26313d;
+            font: inherit;
+        }
+
+        .query-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .query-actions button {
+            padding: 7px 8px;
+            border-radius: 4px;
+            font: inherit;
+            cursor: pointer;
+        }
+
+        #applyQuery {
+            border: 1px solid #2d6f9f;
+            background: #eaf4fb;
+            color: #164969;
+            font-weight: 700;
+        }
+
+        #resetQuery {
+            border: 1px solid #c9d0d6;
+            background: #fff;
+            color: #3a4652;
+        }
+
+        #queryResult {
+            display: none;
+            margin-top: 8px;
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        #queryResult.success {
+            display: block;
+            border: 1px solid #b9d6bf;
+            background: #eef8f0;
+            color: #2d6938;
+        }
+
+        #queryResult.error {
+            display: block;
+            border: 1px solid #e4b7b7;
+            background: #fff0f0;
+            color: #9a3434;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .stat-card {
+            padding: 7px 8px;
+            border: 1px solid #d9e0e6;
+            border-radius: 4px;
+            background: #f8fafc;
+            text-align: center;
+        }
+
+        .stat-value {
+            color: #1f4f72;
+            font-size: 17px;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            margin-top: 2px;
+            color: #5c6772;
+            font-size: 11px;
+        }
+
+        .chart-block {
+            margin-top: 10px;
+        }
+
+        .chart-title {
+            margin-bottom: 6px;
+            color: #4b5560;
+            font-weight: 700;
+        }
+
+        .bar-row {
+            display: grid;
+            grid-template-columns: 90px 1fr 68px;
+            align-items: center;
+            gap: 6px;
+            margin: 5px 0;
+            font-size: 11px;
+        }
+
+        .bar-label {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .bar-track {
+            height: 8px;
+            border-radius: 999px;
+            background: #edf1f4;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: #4f8fb6;
+        }
+
+        .bar-value {
+            color: #4b5560;
+            text-align: right;
+        }
+
+        .legend-section {
+            margin-bottom: 10px;
+        }
+
+        .legend-section-title {
+            margin: 6px 0;
+            color: #4b5560;
+            font-weight: 700;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 22px;
+            padding: 3px 0;
+        }
+
+        .legend-symbol {
+            flex: 0 0 auto;
+            width: 18px;
+            height: 18px;
+            box-sizing: border-box;
+        }
+
+        .legend-line {
+            width: 28px;
+            height: 0;
+            border-top: 4px solid #999;
+        }
+
+        .legend-line.thin {
+            border-top-width: 2px;
+        }
+
+        .legend-circle {
+            border-radius: 50%;
+        }
+
+        .legend-diamond {
+            width: 15px;
+            height: 15px;
+            transform: rotate(45deg);
+        }
+
+        .legend-outline {
+            border: 2px solid #005cb4;
+            background: rgba(64, 128, 255, 0.14);
+        }
+
+        .tool-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 7px;
+        }
+
+        .tool-button {
+            padding: 7px 9px;
+            border: 1px solid #c9d0d6;
+            border-radius: 4px;
+            background: #fff;
+            color: #26313d;
+            font: inherit;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .tool-button:hover {
+            background: #f4f7fa;
+        }
+
+        .tool-button.active {
+            border-color: #2d6f9f;
+            background: #eaf4fb;
+            color: #164969;
+            font-weight: 700;
+        }
+
+        #layersList {
+            padding: 0;
+        }
+
+        .layer-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            border-bottom: 1px solid #edf0f2;
+        }
+
+        .layer-control:last-child {
+            border-bottom: 0;
+        }
+
+        .layer-control input {
+            flex: 0 0 auto;
+        }
+
+        .layer-control label {
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="viewDiv"></div>
+    <div id="status">Chargement de la scene 3D...</div>
+    <div id="hoverTooltip"></div>
+    <div id="toolsDock">
+        <div class="panel-group-header">
+            <span>Mesures et dessin</span>
+            <button class="panel-toggle" type="button" data-target="toolsPanel">Reduire</button>
+        </div>
+        <div id="toolsPanel" class="panel-group-body">
+            <div class="tool-grid">
+                <button id="measureDistance" class="tool-button" type="button">Mesurer une distance</button>
+                <button id="measureArea" class="tool-button" type="button">Mesurer une surface</button>
+                <button id="drawPolygon" class="tool-button" type="button">Dessiner un polygone</button>
+                <button id="clearTools" class="tool-button" type="button">Effacer mesures et dessins</button>
+            </div>
+        </div>
+    </div>
+    <div id="layersPanel">
+        <div id="layersPanelHeader">
+            <span>Jumeau numerique</span>
+            <button id="closeMainPanel" type="button">Fermer</button>
+        </div>
+        <button id="openEtalesCluster" type="button">Etales en clustering 2D</button>
+        <div id="basemapGroup" class="panel-group">
+            <div class="panel-group-header">
+                <span>Fonds de carte</span>
+                <button class="panel-toggle" type="button" data-target="basemapList">Reduire</button>
+            </div>
+            <div id="basemapList" class="panel-group-body"></div>
+        </div>
+        <div id="queryGroup" class="panel-group">
+            <div class="panel-group-header">
+                <span>Requetes</span>
+                <button class="panel-toggle" type="button" data-target="queryPanel">Reduire</button>
+            </div>
+            <div id="queryPanel" class="panel-group-body">
+                <div class="query-control">
+                    <label for="queryLayer">Couche</label>
+                    <select id="queryLayer"></select>
+                </div>
+                <div class="query-control">
+                    <label for="queryField">Champ</label>
+                    <select id="queryField"></select>
+                </div>
+                <div class="query-control">
+                    <label for="queryOperator">Operateur</label>
+                    <select id="queryOperator">
+                        <option value="equals">Egale</option>
+                        <option value="notEquals">Different de</option>
+                        <option value="contains">Contient</option>
+                        <option value="greater">Superieur a</option>
+                        <option value="greaterOrEqual">Superieur ou egal a</option>
+                        <option value="less">Inferieur a</option>
+                        <option value="lessOrEqual">Inferieur ou egal a</option>
+                    </select>
+                </div>
+                <div class="query-control">
+                    <label for="queryValueSelect">Valeur</label>
+                    <select id="queryValueSelect"></select>
+                    <input id="queryValue" type="text" placeholder="Ou saisir une valeur" style="margin-top:6px;">
+                </div>
+                <div class="query-actions">
+                    <button id="applyQuery" type="button">Appliquer</button>
+                    <button id="resetQuery" type="button">Reinitialiser</button>
+                </div>
+                <div id="queryResult"></div>
+            </div>
+        </div>
+        <div id="legendGroup" class="panel-group">
+            <div class="panel-group-header">
+                <span>Legende</span>
+                <button class="panel-toggle" type="button" data-target="legendPanel">Afficher</button>
+            </div>
+            <div id="legendPanel" class="panel-group-body" style="display:none;"></div>
+        </div>
+        <div id="layersGroup" class="panel-group">
+            <div class="panel-group-header">
+                <span>Couches</span>
+                <button class="panel-toggle" type="button" data-target="layersList">Reduire</button>
+            </div>
+            <div id="layersList" class="panel-group-body"></div>
+        </div>
+    </div>
+    <button id="openMainPanel" type="button">Jumeau numerique</button>
+    <div id="statsDock">
+        <div class="panel-group-header">
+            <span>Statistiques</span>
+            <button class="panel-toggle" type="button" data-target="statsPanel">Reduire</button>
+        </div>
+        <div id="statsPanel" class="panel-group-body">
+            <div id="statsSummary" class="stats-grid"></div>
+            <div id="statsCharts"></div>
+        </div>
+    </div>
+
+    <script>
+        require([
+            "esri/WebScene",
+            "esri/views/SceneView",
+            "esri/layers/FeatureLayer",
+            "esri/layers/SceneLayer",
+            "esri/layers/GraphicsLayer",
+            "esri/widgets/DirectLineMeasurement3D",
+            "esri/widgets/AreaMeasurement3D",
+            "esri/widgets/Sketch/SketchViewModel",
+            "esri/widgets/Home",
+            "esri/widgets/Fullscreen"
+        ], function (
+            WebScene,
+            SceneView,
+            FeatureLayer,
+            SceneLayer,
+            GraphicsLayer,
+            DirectLineMeasurement3D,
+            AreaMeasurement3D,
+            SketchViewModel,
+            Home,
+            Fullscreen
+        ) {
+            const status = document.getElementById("status");
+            const basemapOptions = [
+                { label: "Aucun", value: "none" },
+                { label: "Imagerie", value: "satellite" },
+                { label: "Imagerie + labels", value: "hybrid" },
+                { label: "Topographique", value: "topo-vector" },
+                { label: "Rues", value: "streets-vector" },
+                { label: "Gris clair", value: "gray-vector" },
+                { label: "Gris fonce", value: "dark-gray-vector" },
+                { label: "OpenStreetMap", value: "osm" }
+            ];
+            const queryableFieldTypes = [
+                "oid",
+                "small-integer",
+                "integer",
+                "single",
+                "double",
+                "long",
+                "string"
+            ];
+
+            const buildingRenderer = {
+                type: "simple",
+                symbol: {
+                    type: "polygon-3d",
+                    symbolLayers: [{
+                        type: "extrude",
+                        size: 1,
+                        material: { color: "#d89b52" },
+                        edges: {
+                            type: "solid",
+                            color: [80, 80, 80, 0.45],
+                            size: 0.6
+                        }
+                    }]
+                },
+                visualVariables: [{
+                    type: "size",
+                    field: "Hauteur",
+                    valueUnit: "meters"
+                }]
+            };
+
+            const electricLineRenderer = {
+                type: "simple",
+                symbol: {
+                    type: "line-3d",
+                    symbolLayers: [{
+                        type: "line",
+                        material: { color: "#6f7478" },
+                        size: 2.4
+                    }]
+                }
+            };
+
+            const lampadaireRenderer = {
+                type: "simple",
+                symbol: {
+                    type: "point-3d",
+                    symbolLayers: [{
+                        type: "object",
+                        resource: { href: "./models/lampadaire.gltf" },
+                        height: 12.5,
+                        anchor: "bottom"
+                    }]
+                }
+            };
+
+            const quartierRenderer = {
+                type: "simple",
+                symbol: {
+                    type: "polygon-3d",
+                    symbolLayers: [{
+                        type: "fill",
+                        material: { color: [64, 128, 255, 0.12] },
+                        outline: {
+                            color: [0, 92, 180, 0.9],
+                            size: 2
+                        }
+                    }]
+                }
+            };
+
+            const routeRenderer = {
+                type: "unique-value",
+                field: "nature",
+                defaultSymbol: {
+                    type: "line-3d",
+                    symbolLayers: [{
+                        type: "line",
+                        material: { color: [132, 124, 111, 0.85] },
+                        size: 1.8
+                    }]
+                },
+                defaultLabel: "Autre",
+                uniqueValueInfos: [
+                    {
+                        value: "BITUME",
+                        label: "Route bitumee",
+                        symbol: {
+                            type: "line-3d",
+                            symbolLayers: [{
+                                type: "line",
+                                material: { color: [166, 91, 58, 0.92] },
+                                size: 5.2
+                            }]
+                        }
+                    },
+                    {
+                        value: "NON-BITUME",
+                        label: "Route non bitumee",
+                        symbol: {
+                            type: "line-3d",
+                            symbolLayers: [{
+                                type: "line",
+                                material: { color: [214, 166, 88, 0.95] },
+                                size: 3.4
+                            }]
+                        }
+                    }
+                ]
+            };
+
+            const caniveauRenderer = {
+                type: "simple",
+                symbol: {
+                    type: "line-3d",
+                    symbolLayers: [{
+                        type: "line",
+                        material: { color: "#3f8fb2" },
+                        size: 1.8
+                    }]
+                }
+            };
+
+            function createPointFacilityRenderer(color, primitive) {
+                return {
+                    type: "simple",
+                    symbol: {
+                        type: "point-3d",
+                        symbolLayers: [
+                            {
+                                type: "object",
+                                resource: { primitive: primitive },
+                                material: { color: color },
+                                width: 16,
+                                height: 16,
+                                depth: 16,
+                                anchor: "bottom"
+                            }
+                        ]
+                    }
+                };
+            }
+
+            function createEducationIconSymbol(color, primitive) {
+                return {
+                    type: "point-3d",
+                    symbolLayers: [{
+                        type: "icon",
+                        resource: { primitive: primitive },
+                        material: { color: color },
+                        outline: {
+                            color: "#ffffff",
+                            size: 1.2
+                        },
+                        size: 18,
+                        anchor: "center"
+                    }],
+                    verticalOffset: {
+                        screenLength: 28,
+                        maxWorldLength: 80,
+                        minWorldLength: 12
+                    },
+                    callout: {
+                        type: "line",
+                        color: [255, 255, 255, 0.55],
+                        size: 0.6
+                    }
+                };
+            }
+
+            const santeRenderer = {
+                type: "simple",
+                symbol: createEducationIconSymbol("#4f9d7a", "circle")
+            };
+            const securiteRenderer = {
+                type: "simple",
+                symbol: createEducationIconSymbol("#8b6fba", "kite")
+            };
+            const educationRenderer = {
+                type: "unique-value",
+                field: "Type",
+                defaultSymbol: createEducationIconSymbol("#6c7a89", "square"),
+                defaultLabel: "Autre",
+                uniqueValueInfos: [
+                    { value: "CAFOP", label: "CAFOP", symbol: createEducationIconSymbol("#4f78a8", "square") },
+                    { value: "CENTRE DE FORMATION", label: "Centre de formation", symbol: createEducationIconSymbol("#5b8c7a", "square") },
+                    { value: "CONFESSIONNEL", label: "Confessionnel", symbol: createEducationIconSymbol("#8a6fa8", "square") },
+                    { value: "DR", label: "Direction regionale", symbol: createEducationIconSymbol("#6f7f8f", "square") },
+                    { value: "INSPECTION", label: "Inspection", symbol: createEducationIconSymbol("#b07a5a", "square") },
+                    { value: "LYCEE ET COLLEGE", label: "Lycee et college", symbol: createEducationIconSymbol("#496fa8", "square") },
+                    { value: "MATERNELLE", label: "Maternelle", symbol: createEducationIconSymbol("#c98f6b", "square") },
+                    { value: "PRIMAIRE", label: "Primaire", symbol: createEducationIconSymbol("#6aa36f", "square") },
+                    { value: "UNIVERSITE", label: "Universite", symbol: createEducationIconSymbol("#3f5f8f", "square") }
+                ]
+            };
+
+            const projectLayerDefinitions = [
+                {
+                    title: "Quartier",
+                    url: "https://services7.arcgis.com/rAKPeqOliLB1eJQU/arcgis/rest/services/Scene3D_08052026_WFL1/FeatureServer/9",
+                    statsField: "LibQtierCp",
+                    renderer: quartierRenderer,
+                    elevationInfo: { mode: "on-the-ground" },
+                    opacity: 0.55,
+                    popupTemplate: {
+                        title: "Quartier",
+                        content: [{
+                            type: "fields",
+                            fieldInfos: [
+                                { fieldName: "LibQtierCp", label: "Quartier" },
+                                { fieldName: "CodQtierCp", label: "Code quartier" }
+                            ]
+                        }]
+                    }
+                },
+                {
+                    title: "Batiments",
+                    url: "https://services7.arcgis.com/rAKPeqOliLB1eJQU/arcgis/rest/services/Scene3D_08052026_WFL1/FeatureServer/11",
+                    statsField: "Hauteur",
+                    renderer: buildingRenderer,
+                    elevationInfo: { mode: "on-the-ground" },
+                    popupTemplate: {
+                        title: "Batiment",
+                        content: [{
+                            type: "fields",
+                            fieldInfos: [
+                                { fieldName: "Hauteur", label: "Hauteur" }
+                            ]
+                        }]
+                    }
+                },
+                {
+                    title: "Lignes electriques",
+                    url: "https://services7.arcgis.com/rAKPeqOliLB1eJQU/arcgis/rest/services/Scene3D_08052026_WFL1/FeatureServer/7",
+                    renderer: electricLineRenderer,
+                    elevationInfo: {
+                        mode: "relative-to-ground",
+                        featureExpressionInfo: {
+                            expression: "$feature.Hauteur"
+                        },
+                        unit: "meters"
+                    },
+                    popupTemplate: {
+                        title: "Ligne electrique",
+                        content: [{
+                            type: "fields",
+                            fieldInfos: [
+                                { fieldName: "Hauteur", label: "Hauteur" }
+                            ]
+                        }]
+                    }
+                },
+                {
+                    title: "Routes",
+                    url: "https://services7.arcgis.com/rAKPeqOliLB1eJQU/arcgis/rest/services/Scene3D_08052026_WFL1/FeatureServer/6",
+                    statsField: "nature",
+                    renderer: routeRenderer,
+                    elevationInfo: { mode: "on-the-ground" },
+                    popupTemplate: {
+                        title: "Route",
+                        content: [{
+                            type: "fields",
+                            fieldInfos: [
+                                { fieldName: "nature", label: "Nature" },
+                                { fieldName: "TYPE", label: "Type" }
+                            ]
+                        }]
+                    }
+                },
+                {
+                    title: "Caniveaux",
+                    url: "https://services7.arcgis.com/rAKPeqOliLB1eJQU/arcgis/rest/services/Scene3D_08052026_WFL1/FeatureServer/8",
+                    statsField: "NATURE",
+                    renderer: caniveauRenderer,
+                    elevationInfo: { mode: "on-the-ground" },
+                    popupTemplate: {
+                        title: "Caniveau",
+                        content: [{
+                            type: "fields",
+                            fieldInfos: [
+                                { fieldName: "NATURE", label: "Nature" },
+                                { fieldName: "TYPE", label: "Type" }
+                            ]
+                        }]
+                    }
+                },
+                {
+                    title: "Sante",
+                    url: "https://services7.arcgis.com/rAKPeqOliLB1eJQU/arcgis/rest/services/Scene3D_08052026_WFL1/FeatureServer/0",
+                    statsField: "NATURE",
+                    renderer: santeRenderer,
+                    elevationInfo: { mode: "relative-to-ground", offset: 1 },
+                    popupTemplate: {
+                        title: "Sante",
+                        content: [{
+                            type: "fields",
+                            fieldInfos: [
+                                { fieldName: "NOM", label: "Nom" },
+                                { fieldName: "NATURE", label: "Nature" },
+                                { fieldName: "Quartier", label: "Quartier" }
+                            ]
+                        }]
+                    }
+                },
+                {
+                    title: "Education",
+                    url: "https://services7.arcgis.com/rAKPeqOliLB1eJQU/arcgis/rest/services/Scene3D_08052026_WFL1/FeatureServer/4",
+                    statsField: "Type",
+                    renderer: educationRenderer,
+                    elevationInfo: { mode: "relative-to-ground", offset: 1 },
+                    popupTemplate: {
+                        title: "Education",
+                        content: [{
+                            type: "fields",
+                            fieldInfos: [
+                                { fieldName: "NOM", label: "Nom" },
+                                { fieldName: "Type", label: "Type" },
+                                { fieldName: "Quartier", label: "Quartier" }
+                            ]
+                        }]
+                    }
+                },
+                {
+                    title: "Securite",
+                    url: "https://services7.arcgis.com/rAKPeqOliLB1eJQU/arcgis/rest/services/Scene3D_08052026_WFL1/FeatureServer/5",
+                    statsField: "NATURE",
+                    renderer: securiteRenderer,
+                    elevationInfo: { mode: "relative-to-ground", offset: 1 },
+                    popupTemplate: {
+                        title: "Securite",
+                        content: [{
+                            type: "fields",
+                            fieldInfos: [
+                                { fieldName: "NOM", label: "Nom" },
+                                { fieldName: "NATURE", label: "Nature" },
+                                { fieldName: "Quartier", label: "Quartier" }
+                            ]
+                        }]
+                    }
+                },
+                {
+                    title: "Lampadaires",
+                    type: "scene",
+                    url: "https://services7.arcgis.com/rAKPeqOliLB1eJQU/arcgis/rest/services/Scene3D_08052026_WSL2/SceneServer/layers/0",
+                    renderer: lampadaireRenderer,
+                    elevationInfo: {
+                        mode: "relative-to-ground",
+                        offset: 0
+                    },
+                    popupTemplate: {
+                        title: "Lampadaire",
+                        content: [{
+                            type: "fields",
+                            fieldInfos: [
+                                { fieldName: "NATURE", label: "Nature" },
+                                { fieldName: "Hauteur", label: "Hauteur" },
+                                { fieldName: "Quartier", label: "Quartier" }
+                            ]
+                        }]
+                    }
+                }
+            ];
+
+            const projectLayers = projectLayerDefinitions.map(createProjectLayer);
+            const sketchLayer = new GraphicsLayer({
+                title: "Dessins"
+            });
+
+            const scene = new WebScene({
+                basemap: "hybrid",
+                ground: "world-elevation",
+                layers: projectLayers.concat([sketchLayer])
+            });
+
+            const view = new SceneView({
+                container: "viewDiv",
+                map: scene,
+                camera: {
+                    position: {
+                        longitude: -6.4415869,
+                        latitude: 6.875,
+                        z: 2200
+                    },
+                    tilt: 62
+                },
+                environment: {
+                    atmosphere: { quality: "high" },
+                    lighting: {
+                        directShadowsEnabled: true,
+                        ambientOcclusionEnabled: true
+                    }
+                }
+            });
+
+            view.when(function () {
+                status.textContent = "Scene 3D chargee";
+                createBasemapControls();
+                createLayerControls(projectLayers);
+                createLegend();
+                createQueryControls(projectLayers);
+                updateStats(projectLayers);
+                bindPanelGroups();
+                bindAnalysisTools(sketchLayer);
+                bindHoverTooltip(projectLayers);
+
+                view.ui.add(new Home({ view: view }), "top-left");
+                view.ui.add(new Fullscreen({ view: view }), "top-left");
+
+            }).catch(function (error) {
+                console.error("Erreur de chargement de la scene 3D", error);
+                status.textContent = "Erreur de chargement de la scene";
+            });
+
+            function createProjectLayer(layerInfo) {
+                const LayerConstructor = layerInfo.type === "scene" ? SceneLayer : FeatureLayer;
+
+                return new LayerConstructor({
+                    title: layerInfo.title,
+                    url: layerInfo.url,
+                    outFields: ["*"],
+                    popupEnabled: true,
+                    renderer: layerInfo.renderer,
+                    elevationInfo: layerInfo.elevationInfo,
+                    popupTemplate: layerInfo.popupTemplate,
+                    opacity: layerInfo.opacity === undefined ? 1 : layerInfo.opacity,
+                    customStatsField: layerInfo.statsField || null
+                });
+            }
+
+            function createLayerControls(layers) {
+                const list = document.getElementById("layersList");
+                list.innerHTML = "";
+
+                layers.forEach(function (layer, index) {
+                    const id = "layer-control-" + index;
+                    const row = document.createElement("div");
+                    const checkbox = document.createElement("input");
+                    const label = document.createElement("label");
+
+                    row.className = "layer-control";
+                    checkbox.type = "checkbox";
+                    checkbox.id = id;
+                    checkbox.checked = layer.visible;
+                    label.htmlFor = id;
+                    label.textContent = layer.title;
+
+                    checkbox.addEventListener("change", function () {
+                        layer.visible = checkbox.checked;
+                    });
+
+                    row.appendChild(checkbox);
+                    row.appendChild(label);
+                    list.appendChild(row);
+                });
+
+            }
+
+            function createLegend() {
+                const panel = document.getElementById("legendPanel");
+                if (panel.dataset.ready === "true") return;
+                panel.dataset.ready = "true";
+
+                const sections = [
+                    {
+                        title: "Surfaces",
+                        items: [
+                            { label: "Quartier", type: "outline" },
+                            { label: "Batiments 3D", type: "box", color: "#d89b52" }
+                        ]
+                    },
+                    {
+                        title: "Reseaux",
+                        items: [
+                            { label: "Route bitumee", type: "line", color: "rgba(166, 91, 58, 0.92)", width: "thick" },
+                            { label: "Route non bitumee", type: "line", color: "rgba(214, 166, 88, 0.95)", width: "medium" },
+                            { label: "Caniveaux", type: "line", color: "#3f8fb2", width: "thin" },
+                            { label: "Lignes electriques", type: "line", color: "#6f7478", width: "medium" }
+                        ]
+                    },
+                    {
+                        title: "Equipements",
+                        items: [
+                            { label: "Sante", type: "circle", color: "#4f9d7a" },
+                            { label: "Securite", type: "diamond", color: "#8b6fba" },
+                            { label: "Lampadaires", type: "box", color: "#1b2b38" }
+                        ]
+                    },
+                    {
+                        title: "Education par type",
+                        items: [
+                            { label: "CAFOP", type: "box", color: "#4f78a8" },
+                            { label: "Centre de formation", type: "box", color: "#5b8c7a" },
+                            { label: "Confessionnel", type: "box", color: "#8a6fa8" },
+                            { label: "Direction regionale", type: "box", color: "#6f7f8f" },
+                            { label: "Inspection", type: "box", color: "#b07a5a" },
+                            { label: "Lycee et college", type: "box", color: "#496fa8" },
+                            { label: "Maternelle", type: "box", color: "#c98f6b" },
+                            { label: "Primaire", type: "box", color: "#6aa36f" },
+                            { label: "Universite", type: "box", color: "#3f5f8f" }
+                        ]
+                    }
+                ];
+
+                panel.innerHTML = sections.map(function (section) {
+                    const items = section.items.map(createLegendItem).join("");
+                    return `<div class="legend-section"><div class="legend-section-title">${section.title}</div>${items}</div>`;
+                }).join("");
+            }
+
+            function createLegendItem(item) {
+                let symbol = "";
+
+                if (item.type === "line") {
+                    const lineClass = item.width === "thin" ? "legend-line thin" : "legend-line";
+                    symbol = `<span class="${lineClass}" style="border-top-color:${item.color};"></span>`;
+                } else if (item.type === "circle") {
+                    symbol = `<span class="legend-symbol legend-circle" style="background:${item.color}; border:2px solid #fff; box-shadow:0 0 0 1px #9aa4ad;"></span>`;
+                } else if (item.type === "diamond") {
+                    symbol = `<span class="legend-symbol legend-diamond" style="background:${item.color}; border:2px solid #fff; box-shadow:0 0 0 1px #9aa4ad;"></span>`;
+                } else if (item.type === "outline") {
+                    symbol = `<span class="legend-symbol legend-outline"></span>`;
+                } else {
+                    symbol = `<span class="legend-symbol" style="background:${item.color}; border:2px solid #fff; box-shadow:0 0 0 1px #9aa4ad;"></span>`;
+                }
+
+                return `<div class="legend-item">${symbol}<span>${item.label}</span></div>`;
+            }
+
+            function createBasemapControls() {
+                const basemapList = document.getElementById("basemapList");
+                if (basemapList.dataset.ready === "true") return;
+                basemapList.dataset.ready = "true";
+
+                basemapOptions.forEach(function (option) {
+                    const id = "basemap-" + option.value;
+                    const row = document.createElement("div");
+                    const radio = document.createElement("input");
+                    const label = document.createElement("label");
+
+                    row.className = "basemap-control";
+                    radio.type = "radio";
+                    radio.name = "basemap";
+                    radio.id = id;
+                    radio.value = option.value;
+                    radio.checked = option.value === "hybrid";
+                    label.htmlFor = id;
+                    label.textContent = option.label;
+
+                    radio.addEventListener("change", function () {
+                        if (!radio.checked) return;
+                        scene.basemap = option.value === "none" ? null : option.value;
+                    });
+
+                    row.appendChild(radio);
+                    row.appendChild(label);
+                    basemapList.appendChild(row);
+                });
+            }
+
+            function createQueryControls(layers) {
+                const queryLayer = document.getElementById("queryLayer");
+                const queryField = document.getElementById("queryField");
+                const applyQuery = document.getElementById("applyQuery");
+                const resetQuery = document.getElementById("resetQuery");
+                const queryValueSelect = document.getElementById("queryValueSelect");
+
+                if (queryLayer.dataset.ready === "true") return;
+                queryLayer.dataset.ready = "true";
+
+                layers.forEach(function (layer, index) {
+                    const option = document.createElement("option");
+                    option.value = String(index);
+                    option.textContent = layer.title;
+                    queryLayer.appendChild(option);
+                });
+
+                queryLayer.addEventListener("change", function () {
+                    populateQueryFields(layers[Number(queryLayer.value)]);
+                });
+
+                queryField.addEventListener("change", function () {
+                    populateFieldValues(layers[Number(queryLayer.value)], queryField.value);
+                });
+
+                queryValueSelect.addEventListener("change", function () {
+                    document.getElementById("queryValue").value = queryValueSelect.value;
+                });
+
+                applyQuery.addEventListener("click", function () {
+                    applyQueryFilter(layers);
+                });
+
+                resetQuery.addEventListener("click", function () {
+                    resetQueryFilters(layers);
+                });
+
+                populateQueryFields(layers[0]);
+            }
+
+            function populateQueryFields(layer) {
+                const queryField = document.getElementById("queryField");
+                queryField.innerHTML = "";
+
+                layer.when(function () {
+                    const fields = layer.fields
+                        .filter(function (field) {
+                            return queryableFieldTypes.includes(field.type) && !["OBJECTID", "Shape__Area", "Shape__Length"].includes(field.name);
+                        })
+                        .sort(function (a, b) {
+                            return a.name.localeCompare(b.name);
+                        });
+
+                    fields.forEach(function (field) {
+                        const option = document.createElement("option");
+                        option.value = field.name;
+                        option.textContent = field.alias || field.name;
+                        option.dataset.type = field.type;
+                        queryField.appendChild(option);
+                    });
+
+                    if (fields.length > 0) {
+                        populateFieldValues(layer, fields[0].name);
+                    }
+                });
+            }
+
+            function populateFieldValues(layer, fieldName) {
+                const select = document.getElementById("queryValueSelect");
+                const input = document.getElementById("queryValue");
+                select.innerHTML = "";
+                input.value = "";
+
+                const loadingOption = document.createElement("option");
+                loadingOption.value = "";
+                loadingOption.textContent = "Chargement des valeurs...";
+                select.appendChild(loadingOption);
+
+                if (!layer || !fieldName || !layer.createQuery || !layer.queryFeatures) {
+                    loadingOption.textContent = "Saisir une valeur";
+                    return;
+                }
+
+                const query = layer.createQuery();
+                query.where = "1=1";
+                query.outFields = [fieldName];
+                query.returnGeometry = false;
+                query.returnDistinctValues = true;
+                query.orderByFields = [fieldName];
+                query.num = 250;
+
+                layer.queryFeatures(query).then(function (result) {
+                    select.innerHTML = "";
+
+                    const emptyOption = document.createElement("option");
+                    emptyOption.value = "";
+                    emptyOption.textContent = "Choisir une valeur";
+                    select.appendChild(emptyOption);
+
+                    const values = result.features
+                        .map(function (feature) {
+                            return feature.attributes[fieldName];
+                        })
+                        .filter(function (value) {
+                            return value !== null && value !== undefined && String(value).trim() !== "";
+                        });
+
+                    [...new Set(values.map(String))].slice(0, 250).forEach(function (value) {
+                        const option = document.createElement("option");
+                        option.value = value;
+                        option.textContent = value;
+                        select.appendChild(option);
+                    });
+                }).catch(function () {
+                    select.innerHTML = "";
+                    const option = document.createElement("option");
+                    option.value = "";
+                    option.textContent = "Saisir une valeur";
+                    select.appendChild(option);
+                });
+            }
+
+            function applyQueryFilter(layers) {
+                const layer = layers[Number(document.getElementById("queryLayer").value)];
+                const fieldName = document.getElementById("queryField").value;
+                const operator = document.getElementById("queryOperator").value;
+                const rawValue = document.getElementById("queryValue").value.trim();
+                const field = getLayerField(layer, fieldName);
+
+                if (!layer || !fieldName || !rawValue || !field) {
+                    showQueryResult("error", "Choisis une couche, un champ et une valeur.");
+                    return;
+                }
+
+                const where = buildWhereClause(fieldName, field.type, operator, rawValue);
+
+                if (layer.title === "Quartier") {
+                    applyQuartierFilter(layers, layer, fieldName, field.type, operator, rawValue, where);
+                    return;
+                }
+
+                layer.definitionExpression = where;
+                zoomToLayer(layer);
+                updateStats(layers);
+                showQueryResult("success", `Filtre applique sur ${layer.title}`);
+            }
+
+            function applyQuartierFilter(layers, quartierLayer, fieldName, fieldType, operator, rawValue, quartierWhere) {
+                quartierLayer.definitionExpression = quartierWhere;
+
+                const sharedField = fieldName === "CodQtierCp" ? "CodQtierCp" : "Quartier";
+                const sharedValue = rawValue;
+
+                layers.forEach(function (layer) {
+                    if (layer === quartierLayer) return;
+
+                    const matchingField = getLayerField(layer, sharedField) || getLayerField(layer, fieldName);
+                    if (!matchingField) return;
+
+                    layer.definitionExpression = buildWhereClause(matchingField.name, matchingField.type, operator, sharedValue);
+                });
+
+                zoomToLayer(quartierLayer);
+                updateStats(layers);
+                showQueryResult("success", "Filtre quartier applique aux couches qui possedent le champ correspondant.");
+            }
+
+            function resetQueryFilters(layers) {
+                layers.forEach(function (layer) {
+                    layer.definitionExpression = null;
+                });
+                document.getElementById("queryValue").value = "";
+                updateStats(layers);
+                showQueryResult("success", "Filtres reinitialises.");
+            }
+
+            function getLayerField(layer, fieldName) {
+                if (!layer || !layer.fields) return null;
+                return layer.fields.find(function (field) {
+                    return field.name.toLowerCase() === fieldName.toLowerCase();
+                }) || null;
+            }
+
+            function buildWhereClause(fieldName, fieldType, operator, rawValue) {
+                const isText = fieldType === "string";
+                const escapedValue = rawValue.replace(/'/g, "''");
+                const value = isText ? `'${escapedValue}'` : escapedValue;
+
+                if (operator === "contains") {
+                    return isText ? `${fieldName} LIKE '%${escapedValue}%'` : `${fieldName} = ${escapedValue}`;
+                }
+
+                const sqlOperator = {
+                    equals: "=",
+                    notEquals: "<>",
+                    greater: ">",
+                    greaterOrEqual: ">=",
+                    less: "<",
+                    lessOrEqual: "<="
+                }[operator] || "=";
+
+                return `${fieldName} ${sqlOperator} ${value}`;
+            }
+
+            function zoomToLayer(layer) {
+                if (!layer || !layer.createQuery || !layer.queryExtent) return;
+
+                const query = layer.createQuery();
+                query.where = layer.definitionExpression || "1=1";
+
+                layer.queryExtent(query).then(function (result) {
+                    if (result.extent) {
+                        view.goTo(result.extent.expand(1.25)).catch(function () {});
+                    }
+                }).catch(function () {});
+            }
+
+            function showQueryResult(type, message) {
+                const result = document.getElementById("queryResult");
+                result.className = type;
+                result.textContent = message;
+            }
+
+            function bindAnalysisTools(layer) {
+                let activeMeasurement = null;
+                const sketchViewModel = new SketchViewModel({
+                    view: view,
+                    layer: layer,
+                    polygonSymbol: {
+                        type: "polygon-3d",
+                        symbolLayers: [{
+                            type: "fill",
+                            material: { color: [45, 111, 159, 0.22] },
+                            outline: {
+                                color: [45, 111, 159, 0.9],
+                                size: 2
+                            }
+                        }]
+                    }
+                });
+
+                const distanceButton = document.getElementById("measureDistance");
+                const areaButton = document.getElementById("measureArea");
+                const drawButton = document.getElementById("drawPolygon");
+                const clearButton = document.getElementById("clearTools");
+
+                function clearActiveTool() {
+                    [distanceButton, areaButton, drawButton].forEach(function (button) {
+                        button.classList.remove("active");
+                    });
+                    sketchViewModel.cancel();
+                    if (activeMeasurement) {
+                        view.ui.remove(activeMeasurement);
+                        activeMeasurement.destroy();
+                        activeMeasurement = null;
+                    }
+                }
+
+                distanceButton.addEventListener("click", function () {
+                    clearActiveTool();
+                    distanceButton.classList.add("active");
+                    activeMeasurement = new DirectLineMeasurement3D({ view: view });
+                    view.ui.add(activeMeasurement, "bottom-right");
+                    activeMeasurement.viewModel.start();
+                });
+
+                areaButton.addEventListener("click", function () {
+                    clearActiveTool();
+                    areaButton.classList.add("active");
+                    activeMeasurement = new AreaMeasurement3D({ view: view });
+                    view.ui.add(activeMeasurement, "bottom-right");
+                    activeMeasurement.viewModel.start();
+                });
+
+                drawButton.addEventListener("click", function () {
+                    clearActiveTool();
+                    drawButton.classList.add("active");
+                    sketchViewModel.create("polygon");
+                });
+
+                clearButton.addEventListener("click", function () {
+                    clearActiveTool();
+                    layer.removeAll();
+                });
+
+                sketchViewModel.on("create", function (event) {
+                    if (event.state === "complete" || event.state === "cancel") {
+                        drawButton.classList.remove("active");
+                    }
+                });
+            }
+
+            function bindHoverTooltip(layers) {
+                const tooltip = document.getElementById("hoverTooltip");
+                const hoverLayerTitles = new Set(["Sante", "Education", "Securite", "Lampadaires"]);
+
+                view.on("pointer-move", function (event) {
+                    view.hitTest(event).then(function (response) {
+                        const hit = response.results.find(function (result) {
+                            return result.graphic && result.graphic.layer && hoverLayerTitles.has(result.graphic.layer.title);
+                        });
+
+                        if (!hit) {
+                            tooltip.style.display = "none";
+                            return;
+                        }
+
+                        tooltip.innerHTML = buildTooltipContent(hit.graphic);
+                        tooltip.style.left = `${event.x + 14}px`;
+                        tooltip.style.top = `${event.y + 14}px`;
+                        tooltip.style.display = "block";
+                    }).catch(function () {
+                        tooltip.style.display = "none";
+                    });
+                });
+
+                view.on("pointer-leave", function () {
+                    tooltip.style.display = "none";
+                });
+            }
+
+            function buildTooltipContent(graphic) {
+                const attributes = graphic.attributes || {};
+                const title = graphic.layer ? graphic.layer.title : "Entite";
+                const preferredFields = ["Nom", "NOM", "Type", "NATURE", "Quartier", "Hauteur"];
+                const rows = preferredFields
+                    .filter(function (field) {
+                        return attributes[field] !== undefined && attributes[field] !== null && String(attributes[field]).trim() !== "";
+                    })
+                    .slice(0, 5)
+                    .map(function (field) {
+                        return `<div class="tooltip-row"><b>${field} :</b> ${attributes[field]}</div>`;
+                    })
+                    .join("");
+
+                return `<div class="tooltip-title">${title}</div>${rows || "<div class=\"tooltip-row\">Aucun attribut disponible</div>"}`;
+            }
+
+            async function updateStats(layers) {
+                const summary = document.getElementById("statsSummary");
+                const charts = document.getElementById("statsCharts");
+                summary.innerHTML = "";
+                charts.innerHTML = "";
+
+                const quartierLayer = layers.find(function (layer) { return layer.title === "Quartier"; });
+                const educationLayer = layers.find(function (layer) { return layer.title === "Education"; });
+                const countResults = await Promise.all(layers.map(function (layer) {
+                    return getLayerCount(layer).then(function (count) {
+                        return { layer, count };
+                    });
+                }));
+
+                countResults.forEach(function (item) {
+                    summary.appendChild(createStatCard(item.layer.title, item.count));
+                });
+
+                const batimentsLayer = layers.find(function (layer) { return layer.title === "Batiments"; });
+                if (batimentsLayer) {
+                    const heightStats = await getNumericStats(batimentsLayer, "Hauteur");
+                    if (heightStats) {
+                        summary.appendChild(createStatCard("Hauteur moy.", heightStats.avg ? `${heightStats.avg.toFixed(1)} m` : "-"));
+                        summary.appendChild(createStatCard("Hauteur max", heightStats.max ? `${heightStats.max.toFixed(1)} m` : "-"));
+                    }
+                }
+
+                if (quartierLayer) {
+                    const quartierStats = await getQuartierUrbanStats(quartierLayer);
+                    if (quartierStats) {
+                        summary.appendChild(createStatCard("Population", formatStatValue(Math.round(quartierStats.population))));
+                        summary.appendChild(createStatCard("Superficie", `${formatDecimal(quartierStats.superficie, 2)} km2`));
+                        summary.appendChild(createStatCard("Surface batie", `${formatDecimal(quartierStats.superficieBatie, 2)} km2`));
+                        summary.appendChild(createStatCard("Part bati", `${formatDecimal(quartierStats.proportionBatie, 1)} %`));
+                        summary.appendChild(createStatCard("Densite", `${formatDecimal(quartierStats.densite, 0)} hab/km2`));
+                    }
+
+                    const quartierRows = await getQuartierRows(quartierLayer);
+                    appendQuartierCharts(charts, quartierRows);
+                }
+
+                if (educationLayer) {
+                    const educationGroups = await getGroupedStats(educationLayer, "Type");
+                    if (educationGroups.length > 0) {
+                        charts.appendChild(createBarChart("Education par type d'infrastructure", educationGroups));
+                    }
+                }
+            }
+
+            function createStatCard(label, value) {
+                const card = document.createElement("div");
+                card.className = "stat-card";
+                card.innerHTML = `<div class="stat-value">${formatStatValue(value)}</div><div class="stat-label">${label}</div>`;
+                return card;
+            }
+
+            function formatStatValue(value) {
+                return typeof value === "number" ? value.toLocaleString("fr-FR") : value;
+            }
+
+            function formatDecimal(value, digits) {
+                if (value === null || value === undefined || Number.isNaN(value)) return "-";
+                return Number(value).toLocaleString("fr-FR", {
+                    minimumFractionDigits: digits,
+                    maximumFractionDigits: digits
+                });
+            }
+
+            function getQuartierUrbanStats(layer) {
+                if (!layer || !layer.createQuery || !layer.queryFeatures) return Promise.resolve(null);
+
+                const query = layer.createQuery();
+                query.where = layer.definitionExpression || "1=1";
+                query.returnGeometry = false;
+                query.outStatistics = [
+                    { statisticType: "count", onStatisticField: layer.objectIdField || "OBJECTID", outStatisticFieldName: "total_quartiers" },
+                    { statisticType: "sum", onStatisticField: "Population", outStatisticFieldName: "total_population" },
+                    { statisticType: "sum", onStatisticField: "Superficie", outStatisticFieldName: "total_superficie" },
+                    { statisticType: "sum", onStatisticField: "Superficie_bati", outStatisticFieldName: "total_superficie_batie" }
+                ];
+
+                return layer.queryFeatures(query).then(function (result) {
+                    const attributes = result.features[0] && result.features[0].attributes;
+                    if (!attributes) return null;
+
+                    const population = Number(attributes.total_population || 0);
+                    const superficie = Number(attributes.total_superficie || 0);
+                    const superficieBatie = Number(attributes.total_superficie_batie || 0);
+
+                    return {
+                        count: Number(attributes.total_quartiers || 0),
+                        population: population,
+                        superficie: superficie,
+                        superficieBatie: superficieBatie,
+                        proportionBatie: superficie > 0 ? (superficieBatie / superficie) * 100 : 0,
+                        densite: superficie > 0 ? population / superficie : 0
+                    };
+                }).catch(function () {
+                    return null;
+                });
+            }
+
+            function getQuartierRows(layer) {
+                if (!layer || !layer.createQuery || !layer.queryFeatures) return Promise.resolve([]);
+
+                const query = layer.createQuery();
+                query.where = layer.definitionExpression || "1=1";
+                query.returnGeometry = false;
+                query.outFields = ["Quartier", "Population", "Superficie", "Superficie_bati", "Prop_surf_bati", "Desnité_Pop"];
+                query.num = 300;
+
+                return layer.queryFeatures(query).then(function (result) {
+                    return result.features.map(function (feature) {
+                        const attributes = feature.attributes || {};
+                        const superficie = Number(attributes.Superficie || 0);
+                        const superficieBatie = Number(attributes.Superficie_bati || 0);
+                        return {
+                            label: attributes.Quartier || "Non renseigne",
+                            population: Number(attributes.Population || 0),
+                            superficie: superficie,
+                            superficieBatie: superficieBatie,
+                            proportionBatie: attributes.Prop_surf_bati === null || attributes.Prop_surf_bati === undefined
+                                ? (superficie > 0 ? superficieBatie / superficie : 0)
+                                : Number(attributes.Prop_surf_bati),
+                            densite: Number(attributes["Desnité_Pop"] || 0)
+                        };
+                    });
+                }).catch(function () {
+                    return [];
+                });
+            }
+
+            function appendQuartierCharts(container, rows) {
+                if (!rows.length) return;
+
+                container.appendChild(createBarChart(
+                    "Quartiers par population",
+                    topMetricRows(rows, "population", 8, function (value) { return formatStatValue(Math.round(value)); })
+                ));
+                container.appendChild(createBarChart(
+                    "Quartiers par superficie",
+                    topMetricRows(rows, "superficie", 8, function (value) { return `${formatDecimal(value, 2)} km2`; })
+                ));
+                container.appendChild(createBarChart(
+                    "Proportion de surface batie",
+                    topMetricRows(rows, "proportionBatie", 8, function (value) { return `${formatDecimal(value * 100, 1)} %`; })
+                ));
+                container.appendChild(createBarChart(
+                    "Densite de population",
+                    topMetricRows(rows, "densite", 8, function (value) { return `${formatDecimal(value, 0)}`; })
+                ));
+            }
+
+            function topMetricRows(rows, metric, limit, formatter) {
+                return rows
+                    .filter(function (row) {
+                        return Number.isFinite(row[metric]) && row[metric] > 0;
+                    })
+                    .sort(function (a, b) {
+                        return b[metric] - a[metric];
+                    })
+                    .slice(0, limit)
+                    .map(function (row) {
+                        return {
+                            label: row.label,
+                            value: row[metric],
+                            displayValue: formatter ? formatter(row[metric]) : null
+                        };
+                    });
+            }
+
+            function getLayerCount(layer) {
+                if (!layer || !layer.createQuery || !layer.queryFeatureCount) return Promise.resolve("-");
+
+                const query = layer.createQuery();
+                query.where = layer.definitionExpression || "1=1";
+                return layer.queryFeatureCount(query).catch(function () {
+                    return "-";
+                });
+            }
+
+            function getNumericStats(layer, fieldName) {
+                if (!layer || !layer.createQuery || !layer.queryFeatures) return Promise.resolve(null);
+
+                const query = layer.createQuery();
+                query.where = layer.definitionExpression || "1=1";
+                query.outStatistics = [
+                    { statisticType: "avg", onStatisticField: fieldName, outStatisticFieldName: "avg_value" },
+                    { statisticType: "max", onStatisticField: fieldName, outStatisticFieldName: "max_value" }
+                ];
+
+                return layer.queryFeatures(query).then(function (result) {
+                    const attributes = result.features[0] && result.features[0].attributes;
+                    if (!attributes) return null;
+                    return {
+                        avg: attributes.avg_value,
+                        max: attributes.max_value
+                    };
+                }).catch(function () {
+                    return null;
+                });
+            }
+
+            function getGroupedStats(layer, fieldName) {
+                if (!layer || !layer.createQuery || !layer.queryFeatures || !getLayerField(layer, fieldName)) {
+                    return Promise.resolve([]);
+                }
+
+                const query = layer.createQuery();
+                query.where = layer.definitionExpression || "1=1";
+                query.groupByFieldsForStatistics = [fieldName];
+                query.outStatistics = [{
+                    statisticType: "count",
+                    onStatisticField: layer.objectIdField || "OBJECTID",
+                    outStatisticFieldName: "total"
+                }];
+                query.orderByFields = ["total DESC"];
+                query.returnGeometry = false;
+
+                return layer.queryFeatures(query).then(function (result) {
+                    return result.features.map(function (feature) {
+                        return {
+                            label: feature.attributes[fieldName] || "Non renseigne",
+                            value: feature.attributes.total || 0
+                        };
+                    }).slice(0, 8);
+                }).catch(function () {
+                    return [];
+                });
+            }
+
+            function createBarChart(title, rows) {
+                const wrapper = document.createElement("div");
+                wrapper.className = "chart-block";
+
+                const max = Math.max.apply(null, rows.map(function (row) { return row.value; })) || 1;
+                const bars = rows.map(function (row) {
+                    const width = Math.max(4, Math.round((row.value / max) * 100));
+                    const displayValue = row.displayValue || formatStatValue(row.value);
+                    return `
+                        <div class="bar-row" title="${row.label}">
+                            <div class="bar-label">${row.label}</div>
+                            <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
+                            <div class="bar-value">${displayValue}</div>
+                        </div>
+                    `;
+                }).join("");
+
+                wrapper.innerHTML = `<div class="chart-title">${title}</div>${bars}`;
+                return wrapper;
+            }
+
+            function bindPanelGroups() {
+                document.querySelectorAll(".panel-toggle").forEach(function (button) {
+                    if (button.dataset.ready === "true") return;
+                    button.dataset.ready = "true";
+
+                    button.addEventListener("click", function () {
+                        const target = document.getElementById(button.dataset.target);
+                        const isHidden = target.style.display === "none";
+                        target.style.display = isHidden ? "block" : "none";
+                        button.textContent = isHidden ? "Reduire" : "Afficher";
+                    });
+                });
+
+                const mainPanel = document.getElementById("layersPanel");
+                const closeMainPanel = document.getElementById("closeMainPanel");
+                const openMainPanel = document.getElementById("openMainPanel");
+
+                closeMainPanel.addEventListener("click", function () {
+                    mainPanel.classList.add("is-closed");
+                    openMainPanel.classList.add("is-visible");
+                });
+
+                openMainPanel.addEventListener("click", function () {
+                    mainPanel.classList.remove("is-closed");
+                    openMainPanel.classList.remove("is-visible");
+                });
+
+                document.getElementById("openEtalesCluster").addEventListener("click", function () {
+                    window.location.href = "./index_etales_leaflet.html";
+                }, { once: true });
+            }
+        });
+    </script>
+</body>
+</html>
